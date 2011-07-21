@@ -1,0 +1,74 @@
+<apex:component controller="webFormTools" >
+
+	<!-- - include the required libraries -->
+   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+   <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/jquery-ui.min.js"></script>
+   <script src="/soap/ajax/17.0/connection.js" type="text/javascript"></script>
+   <script src="/soap/ajax/17.0/apex.js" type="text/javascript"></script>
+   
+   <!--  change this to any desired jQuery theme. Google hosts them all -->
+   <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.10/themes/ui-lightness/jquery-ui.css" rel="stylesheet" />   
+
+
+<script type="text/javascript">
+//load jQuery in no conflict mode
+jQuery.noConflict();
+//get an api key
+sforce.connection.sessionId = '{!$Api.Session_ID}';
+
+
+  function registerAutoComplete()
+  {
+    //register any input with the class autoRelationship as an autocomplete field.
+    //You could certainly ajust this to be for a different class, or even an ID.
+    jQuery(".autoRelationship").autocomplete({
+    source: function ( request, response )
+    {
+    	//set the object type to query against. This can be any valid object type in your org
+    	//including custom objects.
+		var objectType = 'account';
+		
+		//field field (or comma seperated multiple fields) does the content typed have to
+		//match in order to be a valid returned entry for the list
+		var fieldList = 'name';
+		
+		//field to control the maximum amount of results in the suggest list
+		var maxResults = 15;
+				 
+		var data = sforce.apex.execute('webFormTools' , 'buildAutocompleteId', {objectName: objectType, fieldList: fieldList, searchTerm: request.term, maxResults: maxResults});
+        
+        //parse the resulting data (its returned in an object for some reason instead of a string)
+        data = JSON.parse(data[0]);
+		
+		//create the response data
+		response( jQuery.map( data, function( item ) 
+			{
+			return {
+				label: item.NAME,
+				value: item.VALUE
+			}
+		}));
+
+    },
+	select: function(event, ui) 
+ 	{ 
+ 		//create the name of the hidden field that holds the ID of the related record
+ 		var idField = event.target.id+'_lkid';
+ 		//populate the hidden field with the value of the element selected
+ 		document.getElementById(idField).value = ui.item.value;
+ 		//set the text in the lookup as the value of the label
+ 		document.getElementById(event.target.id).value = ui.item.label;
+ 		return false;
+ 	}    
+	});  
+  }
+  jQuery(document).ready(function() 
+  {
+	registerAutoComplete();
+  });
+
+
+
+
+</script>
+</apex:component>

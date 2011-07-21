@@ -1,0 +1,196 @@
+global class webFormTools 
+{
+	//pass in a comma seperated list of objects to search, and a semi-colon seperated list
+	//of comma seperated fields that relate to the objects my position. For example
+	//buildAutocompleteList('account,contact,lead', 'firstname,lastname;name;name','frank')
+	//would find any account, contact, or lead where the contact firstname was frank, or the account name
+	//was frank, or the lead name was frank. The second paramter is basically a list of lists.
+	
+	public static String buildAutocompleteList(String objectList, String fieldList, String searchTerm)
+	{
+		String returnString = '';
+	
+		try
+		{
+			//create the beginning of the queryString
+			String queryString = 'FIND \''+searchTerm+'\' IN ALL FIELDS RETURNING ';
+			
+			//change the search term to lower case for easy evaluation later (so we don't miss hits due to case)
+			searchTerm = searchTerm.toLowerCase();
+			
+			//create lists based on the data passed in for easy looping. Split the data
+			//passed in to create lists.
+			list<String> objects = objectList.split(',');
+			list<String> objectFields = fieldList.split(';');
+			Map<String,List<String>> ObjectToFieldsMap = new Map<String,List<String>>();
+			//container to hold the strings that match the search term to be returned to the caller
+			list<String> searchHits = new list<String>();
+
+			integer counter = 0;
+			
+			//first up, we have to iterate over every object passed in. The names of the objects are 
+			//stored in the objects list. Each item will contain the name of an object.
+			for(String objectName : objects)
+			{
+				queryString += ObjectName + '(';
+				
+				//The fields that pertain to this object are held at the position "counter" within
+				//the list of objectFields. These are seperated by a comma, so create a new list of fields
+				//by splitting the set of data found in that list. Remember this is a list within a list,
+				//first seperated by semi colon for each object seperate, then by , for each field with that object
+				list<String> thisObjectFields = objectFields.get(counter).split(',');
+				ObjectToFieldsMap.put(objectName,thisObjectFields);
+				//for every field we find, append it to the query string
+				for(String thisField : thisObjectFields)
+				{
+					queryString += thisField+',';	
+				}
+				
+				//because the comma was hard coded, we have to remove the trailing comma to keep the syntax valid
+				queryString = queryString.substring(0, queryString.length() - 1);
+				
+				//close out this part of the query for this object
+				queryString += '),';
+				
+				//increiments the counter so the next time through we read from the right position in the objectFields list
+				counter++;
+			}
+			
+			//Again, since the comma was hard coded in, we need to remove it after the last iteration
+			//to keep the syntax valid
+			queryString = queryString.substring(0, queryString.length() - 1);
+			
+			//Our query is all ready to run, so use a SOSL query to search
+			List<List<SObject>> searchList = search.query(queryString);
+			
+			//reset the counter
+			counter = 0;
+			
+			//That query above returned a list of lists. The first list is the sobject types (contact, account, etc)
+			//the list within there is each record that matched. So lets loop over each list
+			for(List<sObject> thisObjList : searchList)
+			{
+				//now we are within the list of rows pertaining to this sobject. So thisObjList is a list
+				//of contacts, or accounts or whatever. Again, we need to read inside here to get the field values
+				for(sObject thisObj : thisObjList)
+				{
+					//We know only the fields we asked to query for are going to be available on this object.
+					//so lets again grab that list of fields, and iterate over them. We will be looping over fieldnames here
+					//like name,phone,email etc. We have to evaluate each field pulled to see if the value in that field matches
+					//what the user has typed so far. An sObject could be returned if ANY of the requested fields contained a value a matching value
+					//so if you said find me any contact where the name or phone is bob, well we don't know which field caused that record to
+					//be returned. So we need to actually evaluate the contents to figure out if we want to add it to our list of return values.					
+					for(String fieldName : ObjectToFieldsMap.get(objects.get(counter)))
+					{
+						//First create an easy reference to the value of the field on this sObject.
+						//for whatever reason .get returns an object, so cast it to a string
+						string fieldVal = String.valueOf(thisObj.get(fieldName));
+						
+						//we have to check and see if it is null. If you try and transform or evaluate
+						//a null you get an error, so we have to do this stupid check or else a null
+						//value could cause it to explode.
+						if(fieldVal != null)
+						{
+							//make the value lower case, so we use starts with to compare them. Startswith
+							//is case sensative so we have to account for that and make sure the terms are of the same
+							//case
+							fieldVal = fieldVal.toLowerCase();
+							
+							//the moment of truth, does this value start with what the user has requested?
+							//if so, add it to our list. If not, then don't.
+							if(fieldVal.startsWith(searchTerm))
+							{
+								searchHits.add(fieldVal);
+							}
+						}
+					}
+					
+				}
+				counter++;
+			}
+			//iterate over all the search hits, seperate them with a comma. I didn't really need to
+			//store them in a list to do this, I could have done it above, but I like nice clean datasets
+			//and this is more flexible if I want to ajust it in the future.
+			for(string hit : searchHits)
+			{
+				returnString += hit+', ';
+			}
+			//again remove the trailing space and comma for nice clean return.
+			returnString = returnString.substring(0, returnString.length() - 2);
+		}
+		catch(Exception e)
+		{
+			returnString = 'Error ' + e.getMessage();
+		}
+		//pass our glorious set of data back to the caller.
+		return returnString;
+	}	
+
+	WebService static String buildAutocompleteId(String objectName, String fieldList, String searchTerm, Integer maxResults)
+	{
+		//set defaults in case these optional params don't get passed in
+		if(maxResults == null)
+		{
+			maxResults = 20;
+		}
+		
+		//build the return string
+		string returnString = '[';
+		try
+		{
+			//create the query string
+			string query = 'select name, id from '+objectName+' where ';
+			
+			//split the passed in fieldnames into a list for iteration
+			list<String> objectFields = fieldList.split(',');
+			for(String fieldName : objectFields)
+			{
+				//add the fieldname to the where condition
+				query += fieldName + ' like \''+searchTerm+'%\' or ';
+			}
+			
+			//remove the last 'or' from the query string
+			query = query.substring(0, query.length() - 3);
+			
+			//append the max results 
+			query += ' limit ' +maxResults;
+			
+			//query to get the sObjects that match our query
+			list<sObject> sObjects = database.query(query);
+			
+			//for every sObject found, JSON encode it.
+			for(sObject obj : sObjects)
+			{
+				returnString +=  '{"NAME": "'+obj.get('name') + '","VALUE": "'+obj.get('id')+'"},';
+			}
+			//clean up the last comma from the JSON string
+			returnString = returnString.substring(0, returnString.length() - 1);
+			
+			//add the closing bracket
+			returnString += ']';
+			
+		}		
+		catch(Exception e)
+		{
+			returnString = 'Error ' + e.getMessage();
+		}
+		//pass our glorious set of data back to the caller.
+		return returnString;
+	}
+	
+	@isTest
+	static void testBuildAutocompleteId()
+	{
+		Contact thisContact = new Contact();
+		thisContact.firstname = 'frank';
+		thisContact.lastname = 'jones';
+		insert thisContact;
+		
+		//success test
+		String jsonResults = webFormTools.buildAutocompleteId('contact','name,email,phone','frank jones',20);
+		
+		//fail test
+		String jsonResultsFail = webFormTools.buildAutocompleteId('contact','someinvalidfield','frank jones',20);
+		
+	}	
+}

@@ -1,0 +1,24 @@
+<apex:page standardcontroller="contact" >
+     <apex:outputText escape="false">
+        <c:autoComplete ></c:autoComplete>
+    </apex:outputText>
+
+    <apex:pageBlock id="qer">
+        <apex:pageBlockSection >
+            <apex:pageMessages ></apex:pageMessages>
+        </apex:pageBlockSection>
+   
+
+   
+       <apex:form >
+           <strong>Make sure to put a contact ID in the URL for testing.</strong><br /><hr />
+           Contact Name: {!contact.name}<br />
+           Account: {!contact.accountid}<br />
+           Account Name <apex:inputField value="{!contact.accountId}" styleclass="autoRelationship" /><br/>
+           Simply start typing to see suggestions. Click a desired suggestion.<br /> 
+           <apex:commandButton value="save" action="{!quicksave}" reRender="qer" oncomplete="registerAutoComplete();" />
+           
+       </apex:form> 
+    </apex:pageBlock>   
+   
+</apex:page>

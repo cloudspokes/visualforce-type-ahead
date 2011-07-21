@@ -1,0 +1,13 @@
+Type-Ahead/Auto-Complete Visualforce Component
+
+URL: http://www.cloudspokes.com/challenge_detail.html?contestID=201
+Blog: http://blog.cloudspokes.com/2011/06/type-aheadauto-complete-visualforce.html
+Challenge end date: Thu May 26 05:00:00 GMT 2011
+
+Description
+===========
+<p>Create a Visualforce component with type-ahead/auto-complete functionality for lookup fields. Using a lookup is sometimes a tedious process. You have to click the button, wait for the window to open, type in your search criteria, hit the search button, click the link of the record you want and then wait for the window to close. That’s a lot of work for most users.</p> <p>We’d like to create a generic type-ahead/auto-complete Visualforce component that can be dropped into a Visualforce page and quickly configured to allow users to quick select records for a lookup relationship. Here’s an <a href="http://jqueryui.com/demos/autocomplete/#multiple" target="_blank">example jQuery plugin</a> with the type-ahead functionality.</p> <p>First Place: $400<br>Second Place: $200</p>
+
+Requirements
+============
+<p>Create a Visualforce component providing type-ahead/auto-complete functionality using a popular JavaScript library like jQuery, Ext JS or Dojo. The component will have parameters that determines the custom object and lookup field to be used. There may be more parameters needed then these so feel free add as many as needed.</p> <p>The components can use either a standard controller, custom controller or controller extension.</p> <p>Must have adequate test coverage (75%+).</p>
